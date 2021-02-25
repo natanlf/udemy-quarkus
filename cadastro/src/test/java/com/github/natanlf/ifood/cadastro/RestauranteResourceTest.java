@@ -5,18 +5,21 @@ import javax.ws.rs.core.Response.Status;
 
 import org.approvaltests.Approvals;
 import org.junit.Assert;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.github.database.rider.cdi.api.DBRider;
 import com.github.database.rider.core.api.configuration.DBUnit;
 import com.github.database.rider.core.api.configuration.Orthography;
 import com.github.database.rider.core.api.dataset.DataSet;
+import com.github.natanlf.ifood.cadastro.dto.AtualizarRestauranteDTO;
+import com.github.natanlf.ifood.cadastro.util.TokenUtils;
 
 import io.quarkus.test.TestTransaction;
-import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import io.restassured.http.Header;
 import io.restassured.specification.RequestSpecification;
 
 @DBRider
@@ -24,6 +27,13 @@ import io.restassured.specification.RequestSpecification;
 @QuarkusTest
 //@QuarkusTestResource(CadastroTestLifecycleManager.class)
 public class RestauranteResourceTest {
+	
+	 private String token;
+
+    @BeforeEach
+    public void gereToken() throws Exception {
+        token = TokenUtils.generateTokenString("/JWTProprietarioClaims.json", null);
+    }
 
     @Test
     @TestTransaction
@@ -38,30 +48,30 @@ public class RestauranteResourceTest {
     }
 
     private RequestSpecification given() {
-        return RestAssured.given().contentType(ContentType.JSON);
+    	return RestAssured.given()
+                .contentType(ContentType.JSON).header(new Header("Authorization", "Bearer " + token));
     }
 
     //Exemplo de um teste de PUT
 
     @Test
-    @TestTransaction
     @DataSet("restaurantes-cenario-1.yml")
     public void testAlterarRestaurante() {
-        Restaurante dto = new Restaurante();
-        dto.nome = "novoNome";
+        AtualizarRestauranteDTO dto = new AtualizarRestauranteDTO();
+        dto.nomeFantasia = "novoNome";
         Long parameterValue = 123L;
-        String resultado = given()
+        given()
                 .with().pathParam("id", parameterValue)
                 .body(dto)
                 .when().put("/restaurantes/{id}")
                 .then()
                 .statusCode(Status.NO_CONTENT.getStatusCode())
                 .extract().asString();
-        Assert.assertEquals("", resultado);
+
         Restaurante findById = Restaurante.findById(parameterValue);
-        findById.persist();
+
         //poderia testar todos os outros atribudos
-        Assert.assertEquals(dto.nome, findById.nome);
+        Assert.assertEquals(dto.nomeFantasia, findById.nome);
 
     }
 }
